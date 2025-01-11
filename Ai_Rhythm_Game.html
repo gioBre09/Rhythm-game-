@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Rhythm Game</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: black;
+            color: white;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #222, #555);
+        }
+        .score {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: gold;
+        }
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            text-align: center;
+            color: red;
+            display: none;
+        }
+        .game-over button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background: gold;
+            border: none;
+            color: black;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .game-over button:hover {
+            background: orange;
+        }
+    </style>
+</head>
+<body>
+    <div class="score">Score: 0</div>
+    <div class="game-over">
+        <div>Game Over</div>
+        <button onclick="startGame()">Restart</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let score = 0;
+        let gameRunning = false;
+        const keys = {};
+        const notes = [];
+        const noteSpeed = 3; // Speed of falling notes
+        const noteFrequency = 1000; // Spawn notes every 1000ms
+        const noteTargetY = canvas.height - 100; // Target line for hitting notes
+        let lastNoteTime = 0;
+
+        function startGame() {
+            document.querySelector('.game-over').style.display = 'none';
+            score = 0;
+            notes.length = 0;
+            gameRunning = true;
+            lastNoteTime = 0;
+            requestAnimationFrame(update);
+        }
+
+        class Note {
+            constructor(x, key) {
+                this.x = x;
+                this.y = 0;
+                this.key = key;
+                this.hit = false;
+            }
+            draw() {
+                ctx.fillStyle = this.hit ? 'green' : 'red';
+                ctx.fillRect(this.x - 25, this.y - 25, 50, 50);
+                ctx.fillStyle = 'white';
+                ctx.font = '20px Arial';
+                ctx.fillText(this.key.toUpperCase(), this.x - 8, this.y + 8);
+            }
+            update() {
+                this.y += noteSpeed;
+                if (this.y > canvas.height && !this.hit) {
+                    gameOver();
+                }
+            }
+        }
+
+        function spawnNote() {
+            const keyOptions = ['a', 's', 'd', 'f'];
+            const key = keyOptions[Math.floor(Math.random() * keyOptions.length)];
+            const xPositions = [
+                canvas.width / 4 - 50,
+                canvas.width / 2 - 50,
+                (canvas.width / 4) * 3 - 50,
+                canvas.width - 50,
+            ];
+            const x = xPositions[keyOptions.indexOf(key)];
+            notes.push(new Note(x, key));
+        }
+
+        function update(time) {
+            if (!gameRunning) return;
+
+            const deltaTime = time - lastNoteTime;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw notes
+            notes.forEach(note => {
+                note.update();
+                note.draw();
+            });
+
+            // Remove hit or missed notes
+            for (let i = notes.length - 1; i >= 0; i--) {
+                if (notes[i].y > canvas.height || notes[i].hit) {
+                    notes.splice(i, 1);
+                }
+            }
+
+            // Spawn new notes
+            if (deltaTime > noteFrequency) {
+                spawnNote();
+                lastNoteTime = time;
+            }
+
+            // Draw score
+            document.querySelector('.score').textContent = `Score: ${score}`;
+
+            requestAnimationFrame(update);
+        }
+
+        function handleKeydown(event) {
+            const key = event.key.toLowerCase();
+            const hitRange = 50; // Allowable range for hitting notes
+            for (const note of notes) {
+                if (
+                    note.key === key &&
+                    Math.abs(note.y - noteTargetY) < hitRange &&
+                    !note.hit
+                ) {
+                    note.hit = true;
+                    score += 10;
+                    return;
+                }
+            }
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.querySelector('.game-over').style.display = 'block';
+        }
+
+        window.addEventListener('keydown', handleKeydown);
+        startGame();
+    </script>
+</body>
+</html>
